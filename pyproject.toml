@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eval-judge-mcp"
+version = "0.1.0"
+description = "Judges agent/RAG outputs (relevance, hallucination, accuracy, routing, prompt injection) using Laya instead of LLM-as-judge -- usable as an MCP server or as a plain Python library."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Ayan Shefeek", email = "ayanshefeek001@gmail.com" },
+]
+keywords = ["mcp", "eval", "llm-as-judge", "rag", "hallucination", "guardrails", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "mcp>=1.27.0",
+    "laya>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Ayanshefeek/eval_laya_mcp"
+Repository = "https://github.com/Ayanshefeek/eval_laya_mcp"
+Issues = "https://github.com/Ayanshefeek/eval_laya_mcp/issues"
+
+[project.scripts]
+eval-judge-mcp = "eval_judge_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["eval_judge_mcp"]

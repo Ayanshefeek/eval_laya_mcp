@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+
+# Build artifacts
+build/
+dist/
+
+# Test / tooling caches
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime data -- this is generated eval output, not source
+eval_runs.db
+
+# Editor/OS cruft
+.DS_Store
