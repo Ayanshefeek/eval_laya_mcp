@@ -28,6 +28,16 @@ import, or Phase 6's wiring into other projects) gets a durable record for
 free without remembering to log it themselves. `source` identifies which
 caller/project a call came from ("email-assistant", "manual-test", etc.);
 it defaults to "unknown" rather than requiring every caller to specify it.
+
+Logging opt-out: every function also accepts `log`, which overrides
+config.EVAL_LOGGING_ENABLED for that one call -- same pattern as
+`threshold` overriding its config default. `log=None` (the default) means
+"do what the global EVAL_JUDGE_LOGGING_ENABLED setting says" (on by
+default); `log=False` skips the db.insert_eval_run call entirely for that
+call, and `log=True` forces logging even if the global default is off.
+This matters for anyone who doesn't want a SQLite file appearing at all
+(read-only filesystems) or doesn't want query/response content persisted
+by default -- see config.py.
 """
 
 import time
@@ -40,7 +50,8 @@ from .laya_client import get_agent
 
 
 def judge_relevance(
-    query: str, response: str, threshold: Optional[float] = None, agent=None, source: str = "unknown"
+    query: str, response: str, threshold: Optional[float] = None, agent=None,
+    source: str = "unknown", log: Optional[bool] = None,
 ) -> dict:
     """Does `response` directly answer the question asked in `query`?
 
@@ -68,15 +79,17 @@ def judge_relevance(
     score = result.answers["relevant"]["noul"]
     verdict = score > threshold
 
-    db.insert_eval_run(
-        source=source, judge_type="relevance", input_snapshot=state,
-        verdict=verdict, scores={"relevant": score}, threshold=threshold, latency_ms=latency_ms,
-    )
+    if config.EVAL_LOGGING_ENABLED if log is None else log:
+        db.insert_eval_run(
+            source=source, judge_type="relevance", input_snapshot=state,
+            verdict=verdict, scores={"relevant": score}, threshold=threshold, latency_ms=latency_ms,
+        )
     return {"relevant": verdict, "score": score, "threshold": threshold}
 
 
 def judge_hallucination(
-    context: str, response: str, threshold: Optional[float] = None, agent=None, source: str = "unknown"
+    context: str, response: str, threshold: Optional[float] = None, agent=None,
+    source: str = "unknown", log: Optional[bool] = None,
 ) -> dict:
     """Is every factual claim in `response` fully supported by `context`?
 
@@ -102,15 +115,17 @@ def judge_hallucination(
     score = result.answers["grounded"]["noul"]
     verdict = score > threshold
 
-    db.insert_eval_run(
-        source=source, judge_type="hallucination", input_snapshot=state,
-        verdict=verdict, scores={"grounded": score}, threshold=threshold, latency_ms=latency_ms,
-    )
+    if config.EVAL_LOGGING_ENABLED if log is None else log:
+        db.insert_eval_run(
+            source=source, judge_type="hallucination", input_snapshot=state,
+            verdict=verdict, scores={"grounded": score}, threshold=threshold, latency_ms=latency_ms,
+        )
     return {"grounded": verdict, "score": score, "threshold": threshold}
 
 
 def judge_accuracy(
-    gold_answer: str, response: str, threshold: Optional[float] = None, agent=None, source: str = "unknown"
+    gold_answer: str, response: str, threshold: Optional[float] = None, agent=None,
+    source: str = "unknown", log: Optional[bool] = None,
 ) -> dict:
     """Does `response` correctly match the factual content of `gold_answer`?
 
@@ -135,15 +150,17 @@ def judge_accuracy(
     score = result.answers["matches"]["noul"]
     verdict = score > threshold
 
-    db.insert_eval_run(
-        source=source, judge_type="accuracy", input_snapshot=state,
-        verdict=verdict, scores={"matches": score}, threshold=threshold, latency_ms=latency_ms,
-    )
+    if config.EVAL_LOGGING_ENABLED if log is None else log:
+        db.insert_eval_run(
+            source=source, judge_type="accuracy", input_snapshot=state,
+            verdict=verdict, scores={"matches": score}, threshold=threshold, latency_ms=latency_ms,
+        )
     return {"accurate": verdict, "score": score, "threshold": threshold}
 
 
 def judge_routing(
-    request: str, threshold: Optional[float] = None, agent=None, source: str = "unknown"
+    request: str, threshold: Optional[float] = None, agent=None,
+    source: str = "unknown", log: Optional[bool] = None,
 ) -> dict:
     """Does answering `request` require an external tool/agent/search call?
 
@@ -170,15 +187,17 @@ def judge_routing(
     score = result.answers["needs_agent_call"]["noul"]
     verdict = score > threshold
 
-    db.insert_eval_run(
-        source=source, judge_type="routing", input_snapshot=state,
-        verdict=verdict, scores={"needs_agent_call": score}, threshold=threshold, latency_ms=latency_ms,
-    )
+    if config.EVAL_LOGGING_ENABLED if log is None else log:
+        db.insert_eval_run(
+            source=source, judge_type="routing", input_snapshot=state,
+            verdict=verdict, scores={"needs_agent_call": score}, threshold=threshold, latency_ms=latency_ms,
+        )
     return {"needs_agent_call": verdict, "score": score, "threshold": threshold}
 
 
 def judge_injection(
-    prompt: str, threshold: Optional[float] = None, agent=None, source: str = "unknown"
+    prompt: str, threshold: Optional[float] = None, agent=None,
+    source: str = "unknown", log: Optional[bool] = None,
 ) -> dict:
     """Does `prompt` try to override system instructions or inject instructions aimed at the AI itself?
 
@@ -212,12 +231,13 @@ def judge_injection(
     injection_score = result.answers["prompt_injection"]["noul"]
     verdict = (jailbreak_score > threshold) or (injection_score > threshold)
 
-    db.insert_eval_run(
-        source=source, judge_type="injection", input_snapshot=state,
-        verdict=verdict,
-        scores={"jailbreak": jailbreak_score, "prompt_injection": injection_score},
-        threshold=threshold, latency_ms=latency_ms,
-    )
+    if config.EVAL_LOGGING_ENABLED if log is None else log:
+        db.insert_eval_run(
+            source=source, judge_type="injection", input_snapshot=state,
+            verdict=verdict,
+            scores={"jailbreak": jailbreak_score, "prompt_injection": injection_score},
+            threshold=threshold, latency_ms=latency_ms,
+        )
     return {
         "is_injection": verdict,
         "jailbreak_score": jailbreak_score,

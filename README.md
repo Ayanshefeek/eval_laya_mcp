@@ -72,8 +72,8 @@ if not result["grounded"]:
 ```
 
 Every call — whether it comes through the MCP server or a direct import —
-writes to the same eval log, so `get_eval_summary()` reports on both
-uniformly.
+writes to the same eval log by default, so `get_eval_summary()` reports on
+both uniformly. See **Opting out of logging** below if you don't want that.
 
 ## Why not just call Laya directly?
 
@@ -120,8 +120,9 @@ they're inserted into a prompt, to catch indirect prompt injection from
 poisoned sources.
 
 Every function accepts an optional `threshold` (overrides the default for
-that one call) and `source` (tags which project/caller logged it, defaults
-to `"unknown"`).
+that one call), `source` (tags which project/caller logged it, defaults to
+`"unknown"`), and `log` (overrides whether this one call gets persisted to
+the eval database — see **Opting out of logging** below).
 
 ## Reporting
 
@@ -147,6 +148,33 @@ get_eval_summary(source="my-rag-app", since_days=7)
 Available as `get_eval_summary` through the MCP server too, or call
 `eval_judge_mcp.db.get_recent_runs(...)` directly for the raw per-call rows.
 
+## Opting out of logging
+
+By default every judge call writes a row to SQLite — that's what makes
+`get_eval_summary()` possible. If you don't want that (a read-only
+filesystem, or not wanting query/response content persisted to disk at
+all), there are two levels of control, same pattern as `threshold`:
+
+**Per-call**, pass `log=False` on the calls you don't want persisted:
+
+```python
+judge_hallucination(context, response, log=False)  # never written to disk
+```
+
+**Globally**, turn it off entirely with an environment variable before your
+app/server starts:
+
+```bash
+export EVAL_JUDGE_LOGGING_ENABLED=false
+```
+
+With logging disabled at the global level, the MCP server also skips
+creating the SQLite file at startup — not just skipping writes to it — so
+nothing touches disk unless you explicitly override a specific call with
+`log=True`. A per-call `log=True`/`log=False` always wins over the global
+setting; `log` left unset (the default) follows whatever
+`EVAL_JUDGE_LOGGING_ENABLED` says (on, by default).
+
 ## Configuration
 
 Every tunable value is read from an environment variable with a sensible
@@ -156,6 +184,8 @@ default — see `config.py`. Notably:
   load and where (`LAYA_DEVICE` unset lets Laya auto-detect CPU/CUDA)
 - `EVAL_JUDGE_DB_PATH` — where the SQLite eval log lives (default
   `eval_runs.db` in the working directory)
+- `EVAL_JUDGE_LOGGING_ENABLED` — global on/off switch for eval logging
+  (default `true`) — see **Opting out of logging** above
 - `EVAL_JUDGE_RELEVANCE_THRESHOLD`, `EVAL_JUDGE_HALLUCINATION_THRESHOLD`,
   `EVAL_JUDGE_ACCURACY_THRESHOLD`, `EVAL_JUDGE_ROUTING_THRESHOLD`,
   `EVAL_JUDGE_INJECTION_THRESHOLD` — per-dimension pass/fail cutoffs

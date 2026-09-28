@@ -25,6 +25,20 @@ evidence comes in, rather than editing this file's defaults directly.
 
 import os
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse a boolean environment variable. Accepts "true"/"false"
+    (case-insensitive) plus "1"/"0" and "yes"/"no"; returns `default` if the
+    variable isn't set at all. Used for EVAL_JUDGE_LOGGING_ENABLED below --
+    os.environ values are always strings, so "false" would otherwise be
+    truthy if read with a plain `bool(...)`.
+    """
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 # --- Laya checkpoint ---
 LAYA_MODEL_ID = os.environ.get("LAYA_MODEL_ID", "convaiinnovations/laya")
 LAYA_SUBFOLDER = os.environ.get("LAYA_SUBFOLDER", "typed-decisions")
@@ -32,6 +46,14 @@ LAYA_DEVICE = os.environ.get("LAYA_DEVICE")  # None lets laya auto-detect (cpu/c
 
 # --- Eval logging ---
 EVAL_DB_PATH = os.environ.get("EVAL_JUDGE_DB_PATH", "eval_runs.db")
+# Global on/off switch for eval logging, defaulting to on (the original,
+# unconditional behavior). Every judge_* function also accepts a per-call
+# `log` parameter that overrides this for that one call, mirroring how
+# `threshold` has a config default with a per-call override -- set this to
+# False when you don't want a SQLite file appearing at all (read-only
+# filesystems, or not wanting query/response content persisted by default),
+# and use the per-call `log=True` on the specific calls you do want logged.
+EVAL_LOGGING_ENABLED = _env_bool("EVAL_JUDGE_LOGGING_ENABLED", True)
 
 # --- Per-dimension thresholds ---
 # A score strictly greater than the threshold counts as a positive verdict

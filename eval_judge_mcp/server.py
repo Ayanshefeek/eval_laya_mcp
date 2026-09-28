@@ -48,11 +48,18 @@ try:
 except ModuleNotFoundError:
     from mcp.server.fastmcp import FastMCP as _ServerClass  # mcp 1.x (legacy)
 
-from eval_judge_mcp import db, judges
+from eval_judge_mcp import config, db, judges
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-db.init_db()  # create eval_runs.db / the eval_runs table if this is the first run
+if config.EVAL_LOGGING_ENABLED:
+    db.init_db()  # create eval_runs.db / the eval_runs table if this is the first run
+# When logging is disabled (EVAL_JUDGE_LOGGING_ENABLED=false), skip eager
+# init entirely -- otherwise the db file would get created at startup even
+# for someone who explicitly opted out, defeating the point (e.g. on a
+# read-only filesystem). get_eval_summary/get_recent_runs still lazily
+# create the table on demand if called directly with log=True on some
+# calls, which is fine -- that's an explicit request to persist something.
 
 mcp = _ServerClass(
     name="eval-judge-mcp",
@@ -61,57 +68,83 @@ mcp = _ServerClass(
 
 
 @mcp.tool()
-def judge_relevance(query: str, response: str, threshold: float | None = None, source: str = "unknown") -> dict:
+def judge_relevance(
+    query: str, response: str, threshold: float | None = None,
+    source: str = "unknown", log: bool | None = None,
+) -> dict:
     """Judge whether `response` directly answers the question asked in `query`.
 
     `source` identifies which project/caller this call came from (e.g.
     "email-assistant") -- it's recorded in the eval log, defaulting to
-    "unknown" if not given.
+    "unknown" if not given. `log` overrides the server's default logging
+    setting for this one call: omit it to use the configured default
+    (EVAL_JUDGE_LOGGING_ENABLED, on by default), pass False to skip logging
+    this call, or True to force logging even if the default is off.
 
     Returns a dict with `relevant` (bool), `score` (0-1 probability), and
     `threshold` (the cutoff actually used for this call).
     """
-    return judges.judge_relevance(query, response, threshold, source=source)
+    return judges.judge_relevance(query, response, threshold, source=source, log=log)
 
 
 @mcp.tool()
-def judge_hallucination(context: str, response: str, threshold: float | None = None, source: str = "unknown") -> dict:
+def judge_hallucination(
+    context: str, response: str, threshold: float | None = None,
+    source: str = "unknown", log: bool | None = None,
+) -> dict:
     """Judge whether every factual claim in `response` is supported by `context`.
+
+    See judge_relevance's docstring for what `log` does.
 
     Returns a dict with `grounded` (bool, True = NOT hallucinated),
     `score` (0-1 probability of being grounded), and `threshold`.
     """
-    return judges.judge_hallucination(context, response, threshold, source=source)
+    return judges.judge_hallucination(context, response, threshold, source=source, log=log)
 
 
 @mcp.tool()
-def judge_accuracy(gold_answer: str, response: str, threshold: float | None = None, source: str = "unknown") -> dict:
+def judge_accuracy(
+    gold_answer: str, response: str, threshold: float | None = None,
+    source: str = "unknown", log: bool | None = None,
+) -> dict:
     """Judge whether `response` correctly matches the factual content of `gold_answer`.
+
+    See judge_relevance's docstring for what `log` does.
 
     Returns a dict with `accurate` (bool), `score` (0-1 probability), and
     `threshold`.
     """
-    return judges.judge_accuracy(gold_answer, response, threshold, source=source)
+    return judges.judge_accuracy(gold_answer, response, threshold, source=source, log=log)
 
 
 @mcp.tool()
-def judge_routing(request: str, threshold: float | None = None, source: str = "unknown") -> dict:
+def judge_routing(
+    request: str, threshold: float | None = None,
+    source: str = "unknown", log: bool | None = None,
+) -> dict:
     """Judge whether answering `request` requires an external tool/agent/search call.
+
+    See judge_relevance's docstring for what `log` does.
 
     Returns a dict with `needs_agent_call` (bool), `score` (0-1
     probability), and `threshold`.
     """
-    return judges.judge_routing(request, threshold, source=source)
+    return judges.judge_routing(request, threshold, source=source, log=log)
 
 
 @mcp.tool()
-def judge_injection(prompt: str, threshold: float | None = None, source: str = "unknown") -> dict:
+def judge_injection(
+    prompt: str, threshold: float | None = None,
+    source: str = "unknown", log: bool | None = None,
+) -> dict:
     """Judge whether `prompt` attempts a jailbreak or prompt injection.
+
+    See judge_relevance's docstring for what `log` does.
 
     Returns a dict with `is_injection` (bool), `jailbreak_score` (0-1),
     `prompt_injection_score` (0-1), and `threshold`.
     """
-    return judges.judge_injection(prompt, threshold, source=source)
+    return judges.judge_injection(prompt, threshold, source=source, log=log)
 
 
 @mcp.tool()
