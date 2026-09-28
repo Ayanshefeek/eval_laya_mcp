@@ -206,3 +206,15 @@ Plan for:
 - CPU inference works but is slower (~500-900ms per call in testing); set
   `LAYA_DEVICE=cuda` if a GPU is available for meaningfully lower latency
 
+## Testing
+
+```bash
+pip install pytest
+pytest tests/
+```
+
+The test suite stubs out `laya.decide()` entirely, so it runs in
+milliseconds with no model download or GPU required — it verifies the
+threshold/verdict logic and eval-log aggregation math in this project, not
+Laya's own scoring quality (that's what the calibration testing in
+`test_judge_questions.py` covers, against the real model).
