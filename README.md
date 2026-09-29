@@ -195,6 +195,25 @@ per dimension) — a reasonable starting point, not a validated ground truth.
 Override them via env vars as you gather real labeled data from your own
 traffic, rather than editing the defaults in `config.py` directly.
 
+## Known limitations
+
+- **Routing's default threshold sits close to observed scores.** In testing, a
+  clear "needs an external tool call" case scored 0.3046 against the 0.30
+  threshold -- a margin of under 0.005. The classification is correct, but
+  this close to the boundary, small variations (different phrasing, a
+  different `laya` patch version) could plausibly flip the verdict. Treat
+  `judge_routing`'s positive case with lower confidence than the other four
+  dimensions, and consider a stricter custom `threshold` for anything
+  latency- or cost-sensitive.
+- **Relevance can score short, single-fact answers lower than expected.** A
+  direct, correct, single-sentence answer to a factual question scored 0.30
+  against the 0.40 default threshold in testing -- below the cutoff despite
+  being clearly relevant. Longer or more elaborated relevant answers scored
+  well above threshold in the same test. This is consistent with the score
+  compression noted in `config.py`, not a new issue, but it's worth
+  spot-checking `judge_relevance` results on short responses rather than
+  trusting them blindly at the default threshold.
+
 ## Requirements and first-run cost
 
 This depends on `laya`, which pulls in `torch` and downloads the
