@@ -182,6 +182,15 @@ default — see `config.py`. Notably:
 
 - `LAYA_MODEL_ID`, `LAYA_SUBFOLDER`, `LAYA_DEVICE` — which checkpoint to
   load and where (`LAYA_DEVICE` unset lets Laya auto-detect CPU/CUDA)
+
+  > **Using a GPU:** setting `LAYA_DEVICE=cuda` only works if you already have
+  > a CUDA-enabled build of PyTorch installed. A plain `pip install torch`
+  > typically installs the CPU-only build. To get GPU support, install the
+  > CUDA-specific PyTorch build matching your driver version from
+  > [pytorch.org](https://pytorch.org/get-started/locally/) *before*
+  > installing `eval-judge-mcp` -- otherwise `LAYA_DEVICE=cuda` will be
+  > silently ignored and inference will still run on CPU.
+
 - `EVAL_JUDGE_DB_PATH` — where the SQLite eval log lives (default
   `eval_runs.db` in the working directory)
 - `EVAL_JUDGE_LOGGING_ENABLED` — global on/off switch for eval logging
