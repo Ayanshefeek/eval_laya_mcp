@@ -197,6 +197,16 @@ traffic, rather than editing the defaults in `config.py` directly.
 
 ## Known limitations
 
+- **Laya's raw scores are explicitly uncalibrated out of the box.** Laya's own
+  documentation states that base checkpoint weights "ship with raw
+  temperature logits," with an expected calibration error (ECE) of 0.466 --
+  and that fitting a per-question-type temperature scale on your own domain
+  data reduces that to 0.081. In practice this means Laya's confidence
+  scores are directionally reliable (higher score = more likely true) but
+  not trustworthy as literal probabilities without extra calibration work.
+  This project's per-dimension threshold tuning (see
+  `config.py`) is a lighter-weight, practical substitute for that missing
+  documented calibration step, not a full fix.
 - **Routing's default threshold sits close to observed scores.** In testing, a
   clear "needs an external tool call" case scored 0.3046 against the 0.30
   threshold -- a margin of under 0.005. The classification is correct, but
@@ -210,9 +220,9 @@ traffic, rather than editing the defaults in `config.py` directly.
   against the 0.40 default threshold in testing -- below the cutoff despite
   being clearly relevant. Longer or more elaborated relevant answers scored
   well above threshold in the same test. This is consistent with the score
-  compression noted in `config.py`, not a new issue, but it's worth
-  spot-checking `judge_relevance` results on short responses rather than
-  trusting them blindly at the default threshold.
+  compression noted above, not a new issue, but it's worth spot-checking
+  `judge_relevance` results on short responses rather than trusting them
+  blindly at the default threshold.
 
 ## Requirements and first-run cost
 
